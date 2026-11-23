@@ -8,65 +8,6 @@ Use when a team needs every campaign name and tagged link to follow one conventi
 
 For one person tagging a handful of links, a shared sheet of allowed values (see the analytics skill) is enough. For link shortening and click analytics without naming rules, see Dub.co.
 
-## What a Taxonomy Can Produce
-
-Each taxonomy is a naming structure the account defines. What one record contains depends on the fields placed in it, and `describe_taxonomy` shows which fields Terminus computes and from what. Common outputs:
-
-- **Campaign names**: a Concatenation field joins other fields with a separator (`us_email_spring-launch_2026-03`). Auto Number, Random and Auto-fill fields add sequence numbers, unique suffixes and derived values. The same structure works for names that never become a URL, such as ad platform campaign, ad set and ad names, or email and file names.
-- **Tagged URLs**: a Tagged URL field appends query parameters to a destination URL. Keys are not limited to UTMs: `cid`, `s_kwcid`, `ref` or any custom key, and several keys can read the same field (`utm_campaign` and `cid` from one campaign name). A parameter can carry an ad platform macro such as `{campaignid}` unencoded, or the record's Terminus ID (for example as `utm_id`). The base can be a fixed URL, such as a mobile attribution link.
-- **Short links**: a Short URL field mints a branded short link for each record, on the account's custom domain if one is set up, and records every click.
-- **QR codes**: a QR Code field encodes another field, usually the short link, as a downloadable image in the account's QR style. Scans count as clicks on the short link.
-- **Terminus ID**: every record gets a unique `trm0...` ID that can be passed in a URL parameter and used to look the record up later.
-
-## Picklists and Validation Rules
-
-Dropdown fields draw their allowed values from picklists. A picklist has one of four structures:
-
-- **Simple**: one flat list, such as seven allowed mediums.
-- **Linear cascade**: each level narrows the next (Channel, then Source, then Placement). The same code can live under two parents, and changing a parent clears the values below it.
-- **Branching cascade**: one parent narrows several sibling lists at once (Campaign type sets Objective, Asset type and Budget owner).
-- **Conditional**: rules swap in a different list when conditions on other fields hold (`region=emea AND channel=display` uses its own placements list).
-
-Options are static (maintained by hand) or automated (taken live from another taxonomy's approved records, so an approved campaign becomes a value later links can pick). A taxonomy or workspace can narrow a dropdown to an include or exclude list. Some dropdowns allow several choices with a minimum and maximum.
-
-Other fields carry their own rules, which `create_submission` enforces on every row:
-
-- **Text**: lowercase or uppercase transforms; spaces removed or replaced with a dash, underscore or custom character; allowed character types (lowercase, uppercase, numbers, spaces, dashes, underscores) plus extra allowed or disallowed characters; minimum and maximum length; contains, starts with, ends with, excludes and regex patterns, each with its own error message; uniqueness across all records; default values and suggestions.
-- **Date**: output format built from day, month, year and week parts with a separator, and earliest and latest allowed dates relative to today.
-- **URL**: allowed protocols, a domain allowlist, and a check that the domain is well formed and its host resolves to a public address.
-- **Required and hidden** settings per field, overridable per taxonomy.
-
-`describe_taxonomy` returns each field's rules and help text, and the preview reports which row and field broke which rule, so the agent can fix the value instead of guessing.
-
-## Batches, Workspaces and Approvals
-
-**A submission is a batch.** One `create_submission` call takes up to 1,000 rows, so a whole campaign's links (every channel, source, placement and creative) can be built, checked and approved together. The account's plan caps how many records one submission can create; the cap is checked when the submission advances, and a larger batch still saves as a draft. In the Terminus app, grid mode does the same by pasting from a spreadsheet, round-tripping a CSV, or generating every combination of a few values.
-
-**Lifecycle:**
-
-1. **Draft**: saves even with row errors, so work is never lost. Errors are attached to the exact row and field.
-2. **In review** (only when the workspace requires it): a workspace admin approves or rejects. Editing a submission in review takes it back to draft; a rejected one can be edited and resubmitted.
-3. **Approved (live)**: every row must be valid. Each row becomes a permanent record and its short link starts redirecting. Approval is final: to change a record later, submit a new submission seeded from it. Records can be archived.
-
-Submissions always build against the governance model's latest published revision, so an admin's unpublished edits never affect people building links.
-
-**Workspaces** divide an account by team, brand, region or client. Every submission and record belongs to one workspace, taxonomies are connected per workspace, and each member has a role per workspace: Admin (settings and approvals), Member (creates submissions and edits their own) or Viewer (read-only). A workspace can narrow a dropdown's options further, so one region or client sees only its own sources or markets.
-
-**Approvals** are set per taxonomy in each workspace with Require review (Business plan or higher). `describe_taxonomy` with a `workspace_id` returns the review rule, `submit_submission` then sends the batch to review instead of live, and `get_submission` reports where it stands.
-
-## Analytics and Delivery
-
-Every short link click and QR scan is recorded from the moment its submission is approved, with the visitor's approximate country, device, browser, OS, referrer and the UTM parameters on the link. In the Terminus app:
-
-- **Overview**: total clicks, unique visitors, active links and QR share for a period, with change against the prior period, and a per-link table (trend, top country, link-versus-QR split, top device) that can be grouped by any field in the governance model.
-- **Drill-in**: filter and break down clicks by UTM campaign, source, medium, content and term, country, device, link click versus QR scan, and any governance model field, such as business unit or region.
-- **Pivot**: cross-tab two of those dimensions by clicks, unique visitors or unique rate.
-- **Per-link stats**: one short link's trend and its geo, device, browser, OS, referrer and link-versus-QR breakdowns.
-
-Because the analytics dimensions are the governance model's own fields, results read in the team's naming convention rather than in raw parameter strings. Analytics are read in the app; the MCP server and the API do not return them yet.
-
-Approved records can also be pushed to your own HTTPS endpoint with an outbound webhook connector, with signed, idempotent deliveries.
-
 ## Capabilities
 
 | Integration | Available | Notes |
@@ -197,6 +138,52 @@ Field handles differ per account; take them from `describe_taxonomy`, never from
 
 Chat can create text, URL, dropdown, date, constant, concatenation and tagged URL fields and static picklists. Other field types and automated picklists are changed in the Terminus app; the tool returns a link to the right page. An agent cannot create a new governance model.
 
+## What a Taxonomy Can Produce
+
+Each taxonomy is a naming structure the account defines. What one record contains depends on the fields placed in it, and `describe_taxonomy` shows which fields Terminus computes and from what. Common outputs:
+
+- **Campaign names**: a Concatenation field joins other fields with a separator (`us_email_spring-launch_2026-03`). Auto Number, Random and Auto-fill fields add sequence numbers, unique suffixes and derived values. The same structure works for names that never become a URL, such as ad platform campaign, ad set and ad names, or email and file names.
+- **Tagged URLs**: a Tagged URL field appends query parameters to a destination URL. Keys are not limited to UTMs: `cid`, `s_kwcid`, `ref` or any custom key, and several keys can read the same field (`utm_campaign` and `cid` from one campaign name). A parameter can carry an ad platform macro such as `{campaignid}` unencoded, or the record's Terminus ID (for example as `utm_id`). The base can be a fixed URL, such as a mobile attribution link.
+- **Short links**: a Short URL field mints a branded short link for each record, on the account's custom domain if one is set up, and records every click.
+- **QR codes**: a QR Code field encodes another field, usually the short link, as a downloadable image in the account's QR style. Scans count as clicks on the short link.
+- **Terminus ID**: every record gets a unique `trm0...` ID that can be passed in a URL parameter and used to look the record up later.
+
+## Picklists and Validation Rules
+
+Dropdown fields draw their allowed values from picklists. A picklist has one of four structures:
+
+- **Simple**: one flat list, such as seven allowed mediums.
+- **Linear cascade**: each level narrows the next (Channel, then Source, then Placement). The same code can live under two parents, and changing a parent clears the values below it.
+- **Branching cascade**: one parent narrows several sibling lists at once (Campaign type sets Objective, Asset type and Budget owner).
+- **Conditional**: rules swap in a different list when conditions on other fields hold (`region=emea AND channel=display` uses its own placements list).
+
+Options are static (maintained by hand) or automated (taken live from another taxonomy's approved records, so an approved campaign becomes a value later links can pick). A taxonomy or workspace can narrow a dropdown to an include or exclude list. Some dropdowns allow several choices with a minimum and maximum.
+
+Other fields carry their own rules, which `create_submission` enforces on every row:
+
+- **Text**: lowercase or uppercase transforms; spaces removed or replaced with a dash, underscore or custom character; allowed character types (lowercase, uppercase, numbers, spaces, dashes, underscores) plus extra allowed or disallowed characters; minimum and maximum length; contains, starts with, ends with, excludes and regex patterns, each with its own error message; uniqueness across all records; default values and suggestions.
+- **Date**: output format built from day, month, year and week parts with a separator, and earliest and latest allowed dates relative to today.
+- **URL**: allowed protocols, a domain allowlist, and a check that the domain is well formed and its host resolves to a public address.
+- **Required and hidden** settings per field, overridable per taxonomy.
+
+`describe_taxonomy` returns each field's rules and help text, and the preview reports which row and field broke which rule, so the agent can fix the value instead of guessing.
+
+## Batches, Workspaces and Approvals
+
+**A submission is a batch.** One `create_submission` call takes up to 1,000 rows, so a whole campaign's links (every channel, source, placement and creative) can be built, checked and approved together. The account's plan caps how many records one submission can create; the cap is checked when the submission advances, and a larger batch still saves as a draft. In the Terminus app, grid mode does the same by pasting from a spreadsheet, round-tripping a CSV, or generating every combination of a few values.
+
+**Lifecycle:**
+
+1. **Draft**: saves even with row errors, so work is never lost. Errors are attached to the exact row and field.
+2. **In review** (only when the workspace requires it): a workspace admin approves or rejects. Editing a submission in review takes it back to draft; a rejected one can be edited and resubmitted.
+3. **Approved (live)**: every row must be valid. Each row becomes a permanent record and its short link starts redirecting. Approval is final: to change a record later, submit a new submission seeded from it. Records can be archived.
+
+Submissions always build against the governance model's latest published revision, so an admin's unpublished edits never affect people building links.
+
+**Workspaces** divide an account by team, brand, region or client. Every submission and record belongs to one workspace, taxonomies are connected per workspace, and each member has a role per workspace: Admin (settings and approvals), Member (creates submissions and edits their own) or Viewer (read-only). A workspace can narrow a dropdown's options further, so one region or client sees only its own sources or markets.
+
+**Approvals** are set per taxonomy in each workspace with Require review (Business plan or higher). `describe_taxonomy` with a `workspace_id` returns the review rule, `submit_submission` then sends the batch to review instead of live, and `get_submission` reports where it stands.
+
 ## API Operations (read-only)
 
 Base URL: `https://api.terminus.app/api/v1`. Every endpoint is a `GET`.
@@ -239,6 +226,19 @@ curl "https://api.terminus.app/api/v1/governance_models" \
 ```
 
 List endpoints return `{ "items": [...], "has_more": bool, "total_count": n }`. Paginate with `page` (1-indexed) and `limit` (default 100, maximum 10000) until `has_more` is `false`.
+
+## Analytics and Delivery
+
+Every short link click and QR scan is recorded from the moment its submission is approved, with the visitor's approximate country, device, browser, OS, referrer and the UTM parameters on the link. In the Terminus app:
+
+- **Overview**: total clicks, unique visitors, active links and QR share for a period, with change against the prior period, and a per-link table (trend, top country, link-versus-QR split, top device) that can be grouped by any field in the governance model.
+- **Drill-in**: filter and break down clicks by UTM campaign, source, medium, content and term, country, device, link click versus QR scan, and any governance model field, such as business unit or region.
+- **Pivot**: cross-tab two of those dimensions by clicks, unique visitors or unique rate.
+- **Per-link stats**: one short link's trend and its geo, device, browser, OS, referrer and link-versus-QR breakdowns.
+
+Because the analytics dimensions are the governance model's own fields, results read in the team's naming convention rather than in raw parameter strings. Analytics are read in the app; the MCP server and the API do not return them yet.
+
+Approved records can also be pushed to your own HTTPS endpoint with an outbound webhook connector, with signed, idempotent deliveries.
 
 ## Rate Limits
 
