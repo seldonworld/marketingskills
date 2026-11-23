@@ -1,12 +1,55 @@
 # Terminus
 
-UTM and campaign governance: a shared governance model of fields, picklists and naming rules that every tagged URL, short link and QR code is built from and checked against.
+Campaign naming and link governance: one shared governance model of fields, picklists and rules that campaign names, UTM-tagged URLs, custom query parameters, short links and QR codes are built from and checked against.
 
 ## When to Use
 
-Use when a team needs every tagged link to follow one naming convention: allowed values for `utm_source` and `utm_medium`, cascading dropdowns (a channel limits which sources are valid), computed campaign names, and review before links go live. An agent can build links that pass the rules, look up links that already exist, and change the convention itself when the user is an owner or admin.
+Use when a team needs every campaign name and tagged link to follow one convention: allowed values for `utm_source` and `utm_medium`, cascading dropdowns (a channel limits which sources are valid), campaign names assembled from those values, and review before anything goes live. An agent can build names and links that pass the rules, look up ones that already exist, and change the convention itself when the user is an owner or admin.
 
 For one person tagging a handful of links, a shared sheet of allowed values (see the analytics skill) is enough. For link shortening and click analytics without naming rules, see Dub.co.
+
+## What a Taxonomy Can Produce
+
+Each taxonomy is a naming structure the account defines. What one record contains depends on the fields placed in it, and `describe_taxonomy` shows which fields Terminus computes and from what. Common outputs:
+
+- **Campaign names**: a Concatenation field joins other fields with a separator (`us_email_spring-launch_2026-03`). Auto Number, Random and Auto-fill fields add sequence numbers, unique suffixes and derived values. The same structure works for names that never become a URL, such as ad platform campaign, ad set and ad names, or email and file names.
+- **Tagged URLs**: a Tagged URL field appends query parameters to a destination URL. Keys are not limited to UTMs: `cid`, `s_kwcid`, `ref` or any custom key, and several keys can read the same field (`utm_campaign` and `cid` from one campaign name). A parameter can carry an ad platform macro such as `{campaignid}` unencoded, or the record's Terminus ID (for example as `utm_id`). The base can be a fixed URL, such as a mobile attribution link.
+- **Short links**: a Short URL field mints a branded short link for each record, on the account's custom domain if one is set up, and records every click.
+- **QR codes**: a QR Code field encodes another field, usually the short link, as a downloadable image in the account's QR style. Scans count as clicks on the short link.
+- **Terminus ID**: every record gets a unique `trm0...` ID that can be passed in a URL parameter and used to look the record up later.
+
+## Picklists and Validation Rules
+
+Dropdown fields draw their allowed values from picklists. A picklist has one of four structures:
+
+- **Simple**: one flat list, such as seven allowed mediums.
+- **Linear cascade**: each level narrows the next (Channel, then Source, then Placement). The same code can live under two parents, and changing a parent clears the values below it.
+- **Branching cascade**: one parent narrows several sibling lists at once (Campaign type sets Objective, Asset type and Budget owner).
+- **Conditional**: rules swap in a different list when conditions on other fields hold (`region=emea AND channel=display` uses its own placements list).
+
+Options are static (maintained by hand) or automated (taken live from another taxonomy's approved records, so an approved campaign becomes a value later links can pick). A taxonomy or workspace can narrow a dropdown to an include or exclude list. Some dropdowns allow several choices with a minimum and maximum.
+
+Other fields carry their own rules, which `create_submission` enforces on every row:
+
+- **Text**: lowercase or uppercase transforms; spaces removed or replaced with a dash, underscore or custom character; allowed character types (lowercase, uppercase, numbers, spaces, dashes, underscores) plus extra allowed or disallowed characters; minimum and maximum length; contains, starts with, ends with, excludes and regex patterns, each with its own error message; uniqueness across all records; default values and suggestions.
+- **Date**: output format built from day, month, year and week parts with a separator, and earliest and latest allowed dates relative to today.
+- **URL**: allowed protocols, a domain allowlist, and a check that the domain is well formed and its host resolves to a public address.
+- **Required and hidden** settings per field, overridable per taxonomy.
+
+`describe_taxonomy` returns each field's rules and help text, and the preview reports which row and field broke which rule, so the agent can fix the value instead of guessing.
+
+## Analytics and Delivery
+
+Every short link click and QR scan is recorded from the moment its submission is approved, with the visitor's approximate country, device, browser, OS, referrer and the UTM parameters on the link. In the Terminus app:
+
+- **Overview**: total clicks, unique visitors, active links and QR share for a period, with change against the prior period, and a per-link table (trend, top country, link-versus-QR split, top device) that can be grouped by any field in the governance model.
+- **Drill-in**: filter and break down clicks by UTM campaign, source, medium, content and term, country, device, link click versus QR scan, and any governance model field, such as business unit or region.
+- **Pivot**: cross-tab two of those dimensions by clicks, unique visitors or unique rate.
+- **Per-link stats**: one short link's trend and its geo, device, browser, OS, referrer and link-versus-QR breakdowns.
+
+Because the analytics dimensions are the governance model's own fields, results read in the team's naming convention rather than in raw parameter strings. Analytics are read in the app; the MCP server and the API do not return them yet.
+
+Approved records can also be pushed to your own HTTPS endpoint with an outbound webhook connector, with signed, idempotent deliveries.
 
 ## Capabilities
 
@@ -22,10 +65,10 @@ The MCP server is the only way for an agent to create links. The REST API cannot
 ## Concepts
 
 - **Governance model**: the convention itself. Picklists (allowed values), fields (text, dropdown, date, concatenation, tagged URL and more) and taxonomies.
-- **Taxonomy**: one kind of record, such as "Paid social link" or "Campaign", with the fields placed in it and their rules.
+- **Taxonomy**: one kind of record, such as "Paid social link", "Campaign" or "Ad name", with the fields placed in it and their rules.
 - **Workspace**: where a taxonomy is turned on, with its own members, value restrictions and review rule.
 - **Submission**: a draft of one or more rows. Nothing goes live until it is submitted, and a workspace can require a reviewer.
-- **Record**: a published row. Each has a Terminus ID (`trm0...`) and its computed values: the tagged URL, short link and QR code.
+- **Record**: a published row. Each has a Terminus ID (`trm0...`) and its computed values, such as the campaign name, tagged URL, short link and QR code.
 
 ## Authentication
 
@@ -78,7 +121,7 @@ Terminus has no confirmation step of its own before `submit_submission`, `publis
 
 ## Common Agent Operations (MCP)
 
-### Build tagged links that pass the convention
+### Build names and tagged links that pass the convention
 
 1. `list_taxonomies` to find the taxonomy and a workspace it is active in.
 2. `describe_taxonomy` with that `taxonomy_id` and `workspace_id`. Fill fields in `fill_order` and leave computed fields out.
@@ -103,7 +146,7 @@ Terminus has no confirmation step of its own before `submit_submission`, `publis
 
 Field handles differ per account; take them from `describe_taxonomy`, never from this example.
 
-5. Show the user the preview (computed URLs and any row errors). Fix errors with `update_submission`.
+5. Show the user the preview (computed names, URLs and any row errors). Fix errors with `update_submission`. Short links go live when the submission does.
 6. After the user confirms, `submit_submission` with the `version` from the preview they saw. If the draft changed since, nothing is submitted.
 
 ### Make links like an existing one
@@ -199,6 +242,12 @@ A Terminus account is required. New accounts start on a trial of the Business pl
 ## Links
 
 - [Connect AI apps (MCP)](https://docs.terminus.app/guides/connect-ai-apps)
+- [Tagged URL field](https://docs.terminus.app/reference/fields/tagged-url)
+- [Short URL field](https://docs.terminus.app/reference/fields/short-url)
+- [QR Code field](https://docs.terminus.app/reference/fields/qr-code)
+- [Concatenation field](https://docs.terminus.app/reference/fields/concatenation)
+- [Picklist structures](https://docs.terminus.app/concepts/picklist-structures)
+- [Link and QR analytics](https://docs.terminus.app/guides/analytics)
 - [Public API overview](https://docs.terminus.app/api-reference/overview)
 - [API keys](https://docs.terminus.app/account/api-keys)
 - [Pagination, errors and rate limits](https://docs.terminus.app/api-reference/pagination-errors)
