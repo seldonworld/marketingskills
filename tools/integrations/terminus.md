@@ -38,6 +38,22 @@ Other fields carry their own rules, which `create_submission` enforces on every 
 
 `describe_taxonomy` returns each field's rules and help text, and the preview reports which row and field broke which rule, so the agent can fix the value instead of guessing.
 
+## Batches, Workspaces and Approvals
+
+**A submission is a batch.** One `create_submission` call takes up to 1,000 rows, so a whole campaign's links (every channel, source, placement and creative) can be built, checked and approved together. The account's plan caps how many records one submission can create; the cap is checked when the submission advances, and a larger batch still saves as a draft. In the Terminus app, grid mode does the same by pasting from a spreadsheet, round-tripping a CSV, or generating every combination of a few values.
+
+**Lifecycle:**
+
+1. **Draft**: saves even with row errors, so work is never lost. Errors are attached to the exact row and field.
+2. **In review** (only when the workspace requires it): a workspace admin approves or rejects. Editing a submission in review takes it back to draft; a rejected one can be edited and resubmitted.
+3. **Approved (live)**: every row must be valid. Each row becomes a permanent record and its short link starts redirecting. Approval is final: to change a record later, submit a new submission seeded from it. Records can be archived.
+
+Submissions always build against the governance model's latest published revision, so an admin's unpublished edits never affect people building links.
+
+**Workspaces** divide an account by team, brand, region or client. Every submission and record belongs to one workspace, taxonomies are connected per workspace, and each member has a role per workspace: Admin (settings and approvals), Member (creates submissions and edits their own) or Viewer (read-only). A workspace can narrow a dropdown's options further, so one region or client sees only its own sources or markets.
+
+**Approvals** are set per taxonomy in each workspace with Require review (Business plan or higher). `describe_taxonomy` with a `workspace_id` returns the review rule, `submit_submission` then sends the batch to review instead of live, and `get_submission` reports where it stands.
+
 ## Analytics and Delivery
 
 Every short link click and QR scan is recorded from the moment its submission is approved, with the visitor's approximate country, device, browser, OS, referrer and the UTM parameters on the link. In the Terminus app:
