@@ -79,6 +79,7 @@ Anyone — including tool makers and partners — may contribute content that na
 | tolt | Referral | ✓ | ✓ | [✓](clis/tolt.js) | - | [tolt.md](integrations/tolt.md) |
 | linkjolt | Referral | ✓ | ✓ | - | - | [linkjolt.md](integrations/linkjolt.md) |
 | dub-co | Links | ✓ | - | [✓](clis/dub.js) | ✓ | [dub-co.md](integrations/dub-co.md) |
+| terminus | UTM Governance | ✓ | ✓ | - | - | [terminus.md](integrations/terminus.md) |
 | mention-me | Referral | ✓ | - | [✓](clis/mention-me.js) | - | [mention-me.md](integrations/mention-me.md) |
 | partnerstack | Affiliate | ✓ | ✓ | [✓](clis/partnerstack.js) | - | [partnerstack.md](integrations/partnerstack.md) |
 | mailchimp | Email | ✓ | ✓ | [✓](clis/mailchimp.js) | ✓ | [mailchimp.md](integrations/mailchimp.md) |
@@ -316,6 +317,16 @@ Conversion rate optimization, heatmaps, and experimentation.
 | **optimizely** | A/B testing, feature flags | MCP available |
 
 **Choosing**: Hotjar for understanding user behavior. Optimizely for running experiments.
+
+### UTM Governance
+
+Shared naming conventions for campaign names, UTMs and campaign links: allowed values, validation, and review before anything goes live.
+
+| Tool | Fits | MCP Available |
+|------|----------|:-------------:|
+| **terminus** | Team-wide campaign naming and UTM conventions with cascading and conditional picklists, text rules, review, custom query parameters, short links, QR codes and click analytics | ✓ |
+
+**Choosing**: A shared sheet of allowed values works for one person or a small team (see the analytics skill). Terminus fits when several teams or agencies build links and the convention has to be enforced, not just written down. Dub.co fits link shortening and click analytics without naming rules.
 
 ### Scheduling
 
@@ -742,6 +753,7 @@ These tools have Model Context Protocol servers available, enabling direct agent
 - **magister** - Connected marketing accounts, AI visibility checks, site audits, keyword research (house tool)
 - **agent-press-wire** - Press release publishing and newswire distribution (paid per call)
 - **socialtoai** - Public posts, comments, profiles, and trending lists on 18 social platforms (OAuth or API key)
+- **terminus** - Build campaign names, tagged URLs, short links and QR codes that follow a team's naming convention, look up existing ones, and edit the convention (OAuth)
 
 To use MCP tools, ensure the appropriate MCP server is configured in your environment. Most hosted servers sign in with per-user OAuth, which suits interactive sessions; for scheduled or unattended agent runs, use the tool's API key (with the CLI or API, or an MCP that accepts a key header). MCP status checked 2026-10-07.
 
